@@ -1,5 +1,77 @@
 import React, { Component } from "react";
+
+class CustomInstagramLogin extends Component {
+    constructor(props) {
+        super(props);
+        this.state = {
+            isCompleted: false,
+            popul: null
+        };
+    }
+
+    buildCodeRequestURL = () => {
+        const { appId, redirectUri, scope } = this.props;
+        const uri = encodeURIComponent(redirectUri || window.location.href);
+        const scopeStr = Array.isArray(scope) ? scope.join(",") : "user_profile";
+        
+        return `https://api.instagram.com/oauth/authorize?app_id=${appId}&redirect_uri=${uri}&scope=${scopeStr}&response_type=code`;
+    };
+
+    handleLoginClick = () => {
+        const width = 600;
+        const height = 700;
+        const left = window.screen.width / 2 - width / 2;
+        const top = window.screen.height / 2 - height / 2;
+    
+        const popup = window.open(
+          this.buildCodeRequestURL(),
+          'instagram-auth-popup',
+          `width=${width},height=${height},left=${left},top=${top},toolbar=0,location=0,menubar=0,scrollbars=1`
+        );
+        
+        
+        if (popup) {
+
+            console.log("Popup opened, props:", this.props);
+            if (this.props.setUrlButtonVisibility) {
+                this.props.setUrlButtonVisibility(true);
+            }
+
+
+            const checkPopupClosed = setInterval(() => {
+                if (popup.closed) {
+                    clearInterval(checkPopupClosed);
+
+                    if (this.props.setUrlButtonVisibility) {
+                        this.props.setUrlButtonVisibility(false);
+                    }
+
+                }
+            }, 500);
+        } else {
+          console.error("Failed to open popup");
+        }
+    };
+
+    render() {
+        return (
+          <button 
+            className={this.props.className || "instagram-login-button"}
+            onClick={this.handleLoginClick}
+          >
+            {this.props.buttonText || "Login with Instagram"}
+          </button>
+        );
+    }
+}
+
+export default CustomInstagramLogin;
+
+/*
+
+import React, { Component, useEffect } from "react";
 import { useNavigate } from 'react-router-dom';
+
 
 class CustomInstagramLogin extends Component {
     constructor(props) {
@@ -20,7 +92,6 @@ class CustomInstagramLogin extends Component {
 
     componentDidUpdate(prevProps) {
         if (prevProps !== this.props) {
-            console.log("Props updated:", this.props);
         }
     }
 
@@ -101,7 +172,7 @@ class CustomInstagramLogin extends Component {
         console.log("Login button clicked");
         const url = this.buildCodeRequestURL();
         console.log("Auth URL:", url);
-        
+
         const width = 600;
         const height = 700;
         const left = window.screen.width / 2 - width / 2;
@@ -112,23 +183,31 @@ class CustomInstagramLogin extends Component {
           'instagram-auth-popup',
           `width=${width},height=${height},left=${left},top=${top},toolbar=0,location=0,menubar=0,scrollbars=1`
         );
-    
+        
+        
         if (popup) {
-            console.log("Popup opened");
-            console.log('popup location:', popup.location);
+
+            console.log("Popup opened, props:", this.props);
             // console.log('popup pathname:', popup.location.pathname);
-            const params = new URLSearchParams(popup.location.search);
+            // const params = new URLSearchParams(popup.location.search);
             
-            console.log('popup params:', params.get('code'));
+            // console.log('popup params:', params.get('code'));
             
             // Store popup reference
-            this.setState({ popup });
             
             // Monitor popup closing
+            if (this.props.setUrlButtonVisibility) {
+                this.props.setUrlButtonVisibility(true);
+            }
+
             const checkPopupClosed = setInterval(() => {
-                console.log('popup location:', popup.location);
                 if (popup.closed) {
                 clearInterval(checkPopupClosed);
+
+                if (this.props.setUrlButtonVisibility) {
+                    this.props.setUrlButtonVisibility(false);
+                }
+
                 if (!this.state.isCompleted) {
                     const { authCallback } = this.props;
                     if (authCallback) {
@@ -155,3 +234,5 @@ class CustomInstagramLogin extends Component {
 }
 
 export default CustomInstagramLogin;
+
+*/
