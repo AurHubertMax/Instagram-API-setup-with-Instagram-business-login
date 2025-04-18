@@ -15,6 +15,7 @@ function App() {
   const [backendData, setBackendData] = useState({});
   const [urlButtonVisibility, setUrlButtonVisibility] = useState(false);
   const [urlValue, setUrlValue] = useState('');
+  const [accessTokenSuccess, setAccessTokenSuccess] = useState(false);
 
   // separate scope into a comma separated array of strings
   const scopes = scope ? scope.split(',').map(s => s.trim()) : ['user_profile'];
@@ -49,6 +50,18 @@ function App() {
     setUrlValue(e.target.value);
   }
 
+  const handleGenerateAccessToken = async () => {
+    try {
+      const accessToken = await generateInstagramAccessToken(urlValue, clientId, clientSecret, redirectUri);
+      console.log('Generated access token:', accessToken);
+      toast.success('Access token generated successfully');
+      setAccessTokenSuccess(true);
+    } catch (error) {
+      console.error('Error generating access token:', error);
+      toast.error('Error generating access token');
+    }
+  }
+
   return (
     <div className="App">
       <header className="App-header">
@@ -79,8 +92,9 @@ function App() {
               onChange={handleUrlChange}
               className='url-textarea'
             />
-            <button onClick={() => 
-              generateInstagramAccessToken(urlValue, clientId, clientSecret, redirectUri)}
+            <button onClick={() => {
+              handleGenerateAccessToken();
+              }}
             >
               Generate Access Token
             </button>

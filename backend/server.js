@@ -4,6 +4,8 @@ const axios = require('axios');
 const app = express();
 const port = 5000;
 
+const longLivedToken = process.env.REACT_APP_INSTAGRAM_LONG_LIVED_ACCESS_TOKEN;
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -17,6 +19,10 @@ app.get('/api', (req, res) => {
     res.json({ message: 'Hello from the backend!' });
 })
 
+/*---------------------------------------------------------------------------------------
+** INSTAGRAM ACCESS TOKEN GENERATION ENDPOINTS
+** These endpoints are used to create / refresh Instagram access token using the authorization code flow.
+---------------------------------------------------------------------------------------*/
 app.post('/api/instagram/token', async (req, res) => {
     try {
 
@@ -62,6 +68,10 @@ app.post('/api/instagram/token', async (req, res) => {
                 }
             }
         );
+        
+        if (response.status !== 200) {
+            throw new Error('Failed to generate Instagram access token');
+        }
 
         console.log('Instagram token response:', response.data);
 
@@ -118,7 +128,12 @@ app.get('/api/instagram/token', async (req, res) => {
 
 })
 
-// get instagram id
+
+/*---------------------------------------------------------------------------------------
+** INSTAGRAM USER ID AND USER INFO ENDPOINTS 
+** These endpoints are used to get Instagram user id and user info.
+** Can be used for token validation and to get user info.
+---------------------------------------------------------------------------------------*/
 app.get('/api/instagram/userId', async (req, res) => {
     const access_token = req.body.access_token;
     try {
@@ -153,6 +168,53 @@ app.get('/api/instagram/userInfo', async (req, res) => {
         console.error('Error details:', e.body);
         throw e;
     }
+})
+
+/*---------------------------------------------------------------------------------------
+** INSTAGRAM POSTING ENDPOINTS
+** These endpoints are used to post media to Instagram.
+---------------------------------------------------------------------------------------*/
+
+// CREATE A CONTAINER FOR THE MEDIA
+app.post('/api/instagram/createContainer', async (req, res) => {
+    const access_token = longLivedToken;
+
+    // check validity of request body
+    if (!req.body.image_url && !req.body.video_url) {
+        return res.status(400).json({ error: 'Missing image_url or video_url parameter' });
+    }
+    if (!req.body.caption) {
+        return res.status(400).json({ error: 'Missing caption parameter' });
+    }
+
+    const is_carousel = req.body.is_carousel || false;
+    const image_url = req.body.image_url || null;
+    const video_url = req.body.video_url || null;
+    const caption = req.body.caption;
+    const user_id = req.body.user_id;
+
+    try {
+        const response = await axios.post(`https://graph.instagram.com/${user_id}/media`, {
+            params: {
+                image_url: image_url,
+                video_url: video_url,
+                caption: caption,
+                is_carousel_item: is_carousel,
+            }
+        }, {
+            headers: {
+                Authorization: `Bearer ${access_token}`
+            }
+        });
+
+        console.log('Instagram create container response:', response.data);
+        return res.json(response.data);
+    } catch (e) {
+        console.error('Error creating Instagram container:', e.response?.data || e.message);
+        console.error('Error details:', e.body);
+        throw e;
+    }
+    
 })
 
 app.listen(port, () => {
