@@ -46,6 +46,11 @@ class CustomInstagramLogin extends Component {
                         this.props.setUrlButtonVisibility(false);
                     }
 
+                    if (this.props.onLoginSuccess && typeof this.props.onLoginSuccess === 'function') {
+                        setTimeout(() => {
+                            this.props.onLoginSuccess();
+                        }, 1000);
+                    }
                 }
             }, 500);
         } else {

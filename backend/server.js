@@ -1,5 +1,6 @@
 const FormData = require('form-data');
 const express = require('express');
+const session = require('express-session');
 const axios = require('axios');
 const app = express();
 const port = 5000;
@@ -8,6 +9,16 @@ const longLivedToken = process.env.REACT_APP_INSTAGRAM_LONG_LIVED_ACCESS_TOKEN;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+app.use(session({
+    secret: 'secret',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: process.env.NODE_ENV === 'production', // Set to true in production
+        maxAge: 60 * 24 * 60 * 60 * 1000 // 60 days
+    }
+}));
 
 app.use((req, res, next) => {
     res.header("Access-Control-Allow-Origin", "*");
@@ -23,15 +34,35 @@ app.use((req, res, next) => {
     next();
 });
 
-app.use(session({
-    secret: 'secret',
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-        secure: process.env.NODE_ENV === 'production', // Set to true in production
-        maxAge: 60 * 24 * 60 * 60 * 1000 // 60 days
+// middleware to automatically refresh token if it is expired
+app.use(async (req, res, next) => {
+    if (req.session.instagramToken?.longLivedToken) {
+        const token = req.session.instagramToken;
+
+        if (token.longLivedTokenExpiresAt && new Date(token.longLivedTokenExpiresAt) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)) {
+            try {
+                console.log('Auto refreshing Instagram token...');
+
+                const response = await axios.get('https://graph.instagram.com/refresh_access_token', {
+                    params: {
+                        grant_type: 'ig_refresh_token',
+                        access_token: token.longLivedToken
+                    }
+                });
+
+                req.session.instagramToken.longLivedToken = response.data.access_token;
+                req.session.instagramToken.longLivedTokenRefreshedAt = new Date();
+                req.session.instagramToken.longLivedTokenExpiresAt = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000);
+                
+                console.log('Token auto-refreshed successfully');
+            } catch (error) { 
+                console.error('Error auto-refreshing token:', error.message);
+            }
+        }
     }
-}));
+
+    next();
+});
 
 app.get('/api', (req, res) => {
     res.json({ message: 'Hello from the backend!' });
@@ -229,36 +260,6 @@ app.get('/api/instagram/refreshToken', async (req, res) => {
     }
 })
 
-// middleware to automatically refresh token if it is expired
-app.use(async (req, res, next) => {
-    if (req.session.instagramToken?.longLivedToken) {
-        const token = req.session.instagramToken;
-
-        if (token.longLivedTokenExpiresAt && new Date(token.longLivedTokenExpiresAt) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)) {
-            try {
-                console.log('Auto refreshing Instagram token...');
-
-                const response = await axios.get('https://graph.instagram.com/refresh_access_token', {
-                    params: {
-                        grant_type: 'ig_refresh_token',
-                        access_token: token.longLivedToken
-                    }
-                });
-
-                req.session.instagramToken.longLivedToken = response.data.access_token;
-                req.session.instagramToken.longLivedTokenRefreshedAt = new Date();
-                req.session.instagramToken.longLivedTokenExpiresAt = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000);
-                
-                console.log('Token auto-refreshed successfully');
-            } catch (error) { 
-                console.error('Error auto-refreshing token:', error.message);
-            }
-        }
-    }
-
-    next();
-});
-
 
 /*---------------------------------------------------------------------------------------
 ** INSTAGRAM USER ID AND USER INFO ENDPOINTS 
@@ -315,6 +316,26 @@ app.get('/api/instagram/userInfo', async (req, res) => {
     }
 });
 
+app.get('/api/instagram/token-status', (req, res) => {
+    if (!req.session.instagramToken) {
+        return res.json({ 
+            loggedIn: false, 
+            message: 'No Instagram account connected'
+        });
+    }
+
+    const { longLivedToken, userId, longLivedTokenExpiresAt } = req.session.instagramToken;
+
+    return res.json({
+        loggedIn: !!longLivedToken,
+        userId,
+        username: req.session.instagramToken.username || null,
+        profilePicture: req.session.instagramToken.profilePicture || null,
+        expiresAt: longLivedTokenExpiresAt,
+        isExpired: longLivedTokenExpiresAt ? new Date(longLivedTokenExpiresAt) < new Date() : null
+    });
+});
+
 /*---------------------------------------------------------------------------------------
 ** INSTAGRAM POSTING ENDPOINTS
 ** These endpoints are used to post media to Instagram.
@@ -342,7 +363,6 @@ app.post('/api/instagram/createContainer', async (req, res) => {
         const video_url = req.body.video_url || null;
         const caption = req.body.caption;
 
-        // FIX: Use a variable name that's not a parameter
         let userId = req.body.user_id;
         if (!userId) {
             const userResponse = await axios.get('https://graph.instagram.com/me', {
