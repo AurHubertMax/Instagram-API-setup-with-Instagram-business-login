@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import './App.css';
 import { toast } from 'react-toastify';
 import CustomInstagramLogin from './components/customInstagramLogin';
 import { generateShortLivedAccessToken, generateLongLivedAccessToken } from './components/instagramAccessToken';
 import { useParams } from "react-router-dom";
 import axios from 'axios';
-import { checkInstagramConnection as checkConnection, logoutFromInstagram } from './components/instagramUtilities';
+import { checkInstagramConnection as checkConnection, logoutFromInstagram, postToInstagram } from './components/instagramUtilities';
 
 const clientId = process.env.REACT_APP_INSTAGRAM_CLIENT_ID;
 const clientSecret = process.env.REACT_APP_INSTAGRAM_APP_SECRET;
@@ -25,6 +25,8 @@ function App() {
     hasShortLivedToken: null,
     shortLivedTokenExpiresAt: null,
   });
+
+  const fileInputRef = useRef(null);
 
   // separate scope into a comma separated array of strings
   const scopes = scope ? scope.split(',').map(s => s.trim()) : ['user_profile'];
@@ -90,6 +92,21 @@ function App() {
     }
   }
 
+  const handlePostToInstagram = async (caption, file) => {
+    const response = await postToInstagram(caption, file);
+    if (response) {
+      toast.success('Post created successfully!');
+    } else {
+      toast.error('Error creating post');
+    }
+    setCaption('');
+    setFile(null);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''; // Reset the file input
+    }
+  }
+
   return (
     <div className="App">
       <header className="App-header">
@@ -129,6 +146,7 @@ function App() {
                   type="file" 
                   accept="image/*" 
                   className='file-input'
+                  ref={fileInputRef}
                   onChange={(e) => setFile(e.target.files[0])}
                 />
                 <button 
@@ -136,6 +154,7 @@ function App() {
                   onClick={() => {
                     console.log('Caption:', caption);
                     console.log('File:', file);
+                    handlePostToInstagram(caption, file);
                   }}
                 >
                   Post

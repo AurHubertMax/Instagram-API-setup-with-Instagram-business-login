@@ -1,6 +1,9 @@
 const FormData = require('form-data');
 const express = require('express');
 const session = require('express-session');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const axios = require('axios');
 const app = express();
 const port = 5000;
@@ -11,6 +14,27 @@ const longLivedToken = process.env.REACT_APP_INSTAGRAM_LONG_LIVED_ACCESS_TOKEN;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Create uploads directory if it doesn't exist
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Configure storage for uploaded files
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'uploads/');
+    },
+    filename: (req, file, cb) => {
+        cb(null, Date.now() + path.extname(file.originalname));
+    }
+});
+
+// Create the multer instance
+const upload = multer({ storage: storage });
+
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use(session({
     secret: 'secret',
@@ -23,6 +47,7 @@ app.use(session({
 }));
 
 app.use((req, res, next) => {
+    res.header("Access-Control-Allow-Origin", "http://localhost:3000");
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
     next();
@@ -152,7 +177,7 @@ app.post('/api/instagram/token', async (req, res) => {
 app.get('/api/instagram/longLivedToken', async (req, res) => {
     const client_secret = process.env.REACT_APP_INSTAGRAM_APP_SECRET;
     // const client_secret = req.body.client_secret;
-    const shortLivedToken = req.session.instagramToken ? req.session.instagramToken.shortLivedToken : null;
+    const shortLivedToken = req.session.instagramToken ? req.session.instagramToken.shortLivedToken : longLivedToken;
     
     if (!shortLivedToken) {
         return res.status(400).json({ error: 'Missing short-lived access token' });
@@ -224,7 +249,7 @@ app.post('/api/instagram/logout', (req, res) => {
 
 // refresh long-lived access token
 app.get('/api/instagram/refreshToken', async (req, res) => {
-    const access_token = req.session.instagramToken ? req.session.instagramToken.longLivedToken : null;
+    const access_token = req.session.instagramToken ? req.session.instagramToken.longLivedToken : longLivedToken;
     
     if (!access_token) {
         return res.status(400).json({ error: 'Missing long-lived access token' });
@@ -272,7 +297,7 @@ app.get('/api/instagram/userId', async (req, res) => {
     try {
         // Use query parameters for GET requests
         const access_token = req.query.access_token || 
-                          (req.session.instagramToken ? req.session.instagramToken.longLivedToken : null);
+                          (req.session.instagramToken ? req.session.instagramToken.longLivedToken : longLivedToken);
         
         if (!access_token) {
             return res.status(400).json({ error: 'Missing access_token parameter' });
@@ -296,7 +321,7 @@ app.get('/api/instagram/userInfo', async (req, res) => {
     try {
         // Use query parameters for GET requests
         const access_token = req.query.access_token || 
-                          (req.session.instagramToken ? req.session.instagramToken.longLivedToken : null);
+                          (req.session.instagramToken ? req.session.instagramToken.longLivedToken : longLivedToken);
         
         if (!access_token) {
             return res.status(400).json({ error: 'Missing access_token parameter' });
@@ -344,26 +369,35 @@ app.get('/api/instagram/token-status', (req, res) => {
 ---------------------------------------------------------------------------------------*/
 
 // CREATE A CONTAINER FOR THE MEDIA
-app.post('/api/instagram/createContainer', async (req, res) => {
+app.post('/api/instagram/createContainer', upload.single('image'), async (req, res) => {
     try {
-        const access_token = req.session.instagramToken ? req.session.instagramToken.longLivedToken : null;
+        console.log('Received request to create Instagram container');
+        console.log('File:', req.file); 
+        console.log('Body:', req.body); 
+
+        const access_token = req.session.instagramToken ? req.session.instagramToken.longLivedToken : longLivedToken;
 
         if (!access_token) {
             return res.status(400).json({ error: 'Missing long-lived access token' });
         }
 
         // check validity of request body
-        if (!req.body.image_url && !req.body.video_url) {
-            return res.status(400).json({ error: 'Missing image_url or video_url parameter' });
+        if (!req.file) {
+            return res.status(400).json({ error: 'Missing image file' });
         }
+        
         if (!req.body.caption) {
             return res.status(400).json({ error: 'Missing caption parameter' });
         }
 
-        const is_carousel = req.body.is_carousel || false;
-        const image_url = req.body.image_url || null;
-        const video_url = req.body.video_url || null;
+        const serverUrl = `${req.protocol}://${req.get('host')}`;
+        const image_url = `${serverUrl}/uploads/${req.file.filename}`;
         const caption = req.body.caption;
+        
+        console.log('Image URL:', image_url);
+        console.log('Caption:', caption);
+
+        return res.json({ image_url, caption });
 
         let userId = req.body.user_id;
         if (!userId) {

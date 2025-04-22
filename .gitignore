@@ -8,6 +8,9 @@
 **/dist/
 **/out/
 
+# Temporary files
+**/uploads/
+
 # Environment variables
 **/.env
 **/.env.local
