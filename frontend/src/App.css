@@ -53,3 +53,82 @@
   font-size: 0.5em;
   margin: 10px 0;
 }
+
+.instagram-connection-status-container {
+  margin: 10px 0;
+  font-size: 1em;
+  background-color: antiquewhite;
+  width: 100vw;
+  color: black;
+}
+
+.connected-account-container {
+  margin: 10px 0;
+  font-size: 1em;
+  background-color: antiquewhite;
+  width: 100vw;
+  color: black;
+}
+
+.status-indicator connected {
+  color: green;
+}
+.status-indicator disconnected {
+  color: red;
+}
+
+.connected-account-container {
+  margin: 10px 0;
+  font-size: 1em;
+  background-color: antiquewhite;
+  width: 100%;  
+  color: black;
+  display: flex; 
+  flex-direction: column; 
+  align-items: center;  
+}
+
+.post-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background-color: #333;
+  border-radius: 8px;
+  padding: 15px;
+  width: 90%;
+  max-width: 400px;
+  margin: 15px 0; 
+}
+
+.post-textarea {
+  padding: 10px;
+  border-radius: 6px;
+  border: none;
+  min-height: 80px;
+  resize: none;
+  font-size: 16px;
+}
+
+.file-input {
+  background-color: #444;
+  color: white;
+  padding: 8px;
+  border-radius: 6px;
+  width: 100%;
+  cursor: pointer;
+}
+
+.post-button {
+  background-color: #0095f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 10px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.post-button:hover {
+  background-color: #1877f2;
+}

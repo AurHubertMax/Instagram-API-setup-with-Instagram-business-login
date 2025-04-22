@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import './App.css';
 import { toast } from 'react-toastify';
 import CustomInstagramLogin from './components/customInstagramLogin';
-import { generateInstagramAccessToken } from './components/generateInstagramAccessToken';
+import { generateShortLivedAccessToken, generateLongLivedAccessToken } from './components/instagramAccessToken';
 import { useParams } from "react-router-dom";
 import axios from 'axios';
+import { checkInstagramConnection as checkConnection, logoutFromInstagram } from './components/instagramUtilities';
 
 const clientId = process.env.REACT_APP_INSTAGRAM_CLIENT_ID;
 const clientSecret = process.env.REACT_APP_INSTAGRAM_APP_SECRET;
@@ -12,47 +13,35 @@ const redirectUri = process.env.REACT_APP_INSTAGRAM_REDIRECT_URI;
 const scope = process.env.REACT_APP_INSTAGRAM_SCOPE;
 
 function App() {
-  const [loading, setLoading] = useState(true);
-  const [backendData, setBackendData] = useState({});
   const [urlButtonVisibility, setUrlButtonVisibility] = useState(false);
+  const [caption, setCaption] = useState('');
+  const [file, setFile] = useState(null);
   const [urlValue, setUrlValue] = useState('');
-  const [accessTokenSuccess, setAccessTokenSuccess] = useState(false);
   const [instagramStatus, setInstagramStatus] = useState({
     loggedIn: false,
     userId: null,
-    username: null,
-    profilePicture: null,
-    expiresAt: null
+    hasLongLivedToken: null,
+    longLivedTokenExpiresAt: null,
+    hasShortLivedToken: null,
+    shortLivedTokenExpiresAt: null,
   });
 
   // separate scope into a comma separated array of strings
   const scopes = scope ? scope.split(',').map(s => s.trim()) : ['user_profile'];
 
+  const checkInstagramConnection = async () => {
+    return await checkConnection(setInstagramStatus);
+  };
+
   useEffect(() => {
-    fetch('/api')
-      .then(response => {
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
-        return response.json();
-      })
-      .then(data => {
-        setBackendData(data);
-        setLoading(false);
-        console.log(data);
-        console.log('url is:', window.location.href);
-      })
-      .catch(error => {
-        console.error('There was a problem with the fetch operation:', error);
-        setLoading(false);
-      })
+    checkInstagramConnection();
   }, []);
 
   useEffect(() => {
     if (!instagramStatus.loggedIn) return;
     
     const intervalId = setInterval(() => {
-      checkInstagramConnection();
+      checkConnection(setInstagramStatus);
     }, 60000); // Check every minute
     
     return () => clearInterval(intervalId); // Cleanup on unmount
@@ -70,15 +59,19 @@ function App() {
 
   const handleGenerateAccessToken = async () => {
     try {
-      const accessToken = await generateInstagramAccessToken(urlValue, clientId, clientSecret, redirectUri);
-      console.log('Generated access token:', accessToken);
+      const shortLivedToken = await generateShortLivedAccessToken(urlValue);
+      console.log('Short-lived access token:', shortLivedToken);
+
+      const longLivedToken = await generateLongLivedAccessToken();
+      console.log('Long-lived access token:', longLivedToken);
+
       toast.success('Access token generated successfully');
-      setAccessTokenSuccess(true);
       
-      await checkInstagramConnection();
+      const isConnected = await checkInstagramConnection();
       
-      if (instagramStatus.loggedIn) {
+      if (isConnected) {
         setUrlButtonVisibility(false);
+        toast.success('Successfully connected to Instagram!');
       }
     } catch (error) {
       console.error('Error generating access token:', error);
@@ -86,66 +79,87 @@ function App() {
     }
   }
 
-  const checkInstagramConnection = async () => {
+  const handleLogoutFromInstagram = async () => {
     try {
-      const response = await fetch('/api/instagram/token-status');
-      if (!response.ok) throw new Error('Failed to fetch connection status');
-      
-      const data = await response.json();
-      setInstagramStatus(data);
-      
-      // If logged in, automatically fetch additional profile data
-      if (data.loggedIn && !data.username) {
-        fetchInstagramProfile(data.userId);
-      }
-      
-      return data.loggedIn;
-    } catch (error) {
-      console.error('Error checking Instagram connection:', error);
-      return false;
-    }
-  };
+      await logoutFromInstagram(setInstagramStatus);
+      toast.success('Successfully logged out from Instagram!');
 
-  const fetchInstagramProfile = async (userId) => {
-    try {
-      const response = await axios.get('http://localhost:5000/api/instagram/userInfo');
-      if (!response.ok) throw new Error('Failed to fetch user info');
-      
-      const data = await response.json();
-      setInstagramStatus(prev => ({
-        ...prev,
-        username: data.username || prev.username,
-        profilePicture: data.profile_picture || prev.profilePicture
-      }));
     } catch (error) {
-      console.error('Error fetching Instagram profile:', error);
+      console.error('Error logging out from Instagram:', error);
+      toast.error('Error logging out from Instagram');
     }
-  };
-
-  const handleLogout = async () => {
-    try {
-      const response = await fetch('/api/instagram/logout', {
-        method: 'POST',
-      });
-      
-      if (!response.ok) throw new Error('Logout failed');
-      
-      await checkInstagramConnection(); // Refresh status
-      toast.info('Disconnected from Instagram');
-    } catch (error) {
-      console.error('Error logging out:', error);
-      toast.error('Failed to disconnect');
-    }
-  };
+  }
 
   return (
     <div className="App">
       <header className="App-header">
-        {loading ? (
-          <p>Loading data from backend...</p>
-        ) : (
-          <p>Message from backend: {backendData.message}</p>
-        )}
+        {/* Instagram Connection Status */}
+        <div className="instagram-connection-status-container">
+          <h2>Instagram Connection Status</h2>
+          
+          {instagramStatus.loggedIn ? (
+            <div className="connected-account-container">
+              <div className="connection-header">
+                <span className="status-indicator connected"></span>
+                <span>Connected to Instagram</span>
+              </div>
+              
+              <div className="account-details">
+                <div className="account-info">
+                  <p className="username">
+                    {instagramStatus.username || `User ID: ${instagramStatus.userId}`}
+                  </p>
+                  {instagramStatus.longLivedTokenExpiresAt && (
+                    <p className="expiry-info">
+                      Token expires: {new Date(instagramStatus.longLivedTokenExpiresAt).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Make a Post textarea and file upload */}
+              <div className="post-container">
+                <textarea 
+                  placeholder='Write your caption here'
+                  className='post-textarea'
+                  value={caption}
+                  onChange={(e) => setCaption(e.target.value)}
+                />
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  className='file-input'
+                  onChange={(e) => setFile(e.target.files[0])}
+                />
+                <button 
+                  className='post-button'
+                  onClick={() => {
+                    console.log('Caption:', caption);
+                    console.log('File:', file);
+                  }}
+                >
+                  Post
+                </button>
+              </div>
+              
+              <button 
+                onClick={() => {handleLogoutFromInstagram()}}
+                className="disconnect-button"
+              >
+                Disconnect Account
+              </button>
+            </div>
+          ) : (
+            <div className="disconnected-account">
+              <div className="connection-header">
+                <span className="status-indicator disconnected"></span>
+                <span>Not connected to Instagram</span>
+              </div>
+              
+              <p>Connect your Instagram account to enable features.</p>
+            </div>
+          )}
+        </div>
         
         {/* Only show login UI if not already logged in */}
         {!instagramStatus.loggedIn && (
@@ -185,48 +199,7 @@ function App() {
         )}
       </header>
       
-      {/* Instagram Connection Status */}
-      <div className="instagram-connection-status">
-        <h2>Instagram Connection Status</h2>
-        
-        {instagramStatus.loggedIn ? (
-          <div className="connected-account">
-            <div className="connection-header">
-              <span className="status-indicator connected"></span>
-              <span>Connected to Instagram</span>
-            </div>
-            
-            <div className="account-details">
-              <div className="account-info">
-                <p className="username">
-                  {instagramStatus.username || `User ID: ${instagramStatus.userId}`}
-                </p>
-                {instagramStatus.longLivedTokenExpiresAt && (
-                  <p className="expiry-info">
-                    Token expires: {new Date(instagramStatus.longLivedTokenExpiresAt).toLocaleDateString()}
-                  </p>
-                )}
-              </div>
-            </div>
-            
-            <button 
-              onClick={handleLogout}
-              className="disconnect-button"
-            >
-              Disconnect Account
-            </button>
-          </div>
-        ) : (
-          <div className="disconnected-account">
-            <div className="connection-header">
-              <span className="status-indicator disconnected"></span>
-              <span>Not connected to Instagram</span>
-            </div>
-            
-            <p>Connect your Instagram account to enable features.</p>
-          </div>
-        )}
-      </div>
+      
     </div>
   );
 }

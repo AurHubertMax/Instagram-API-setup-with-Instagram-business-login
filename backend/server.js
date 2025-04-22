@@ -5,6 +5,8 @@ const axios = require('axios');
 const app = express();
 const port = 5000;
 
+require('dotenv').config();
+
 const longLivedToken = process.env.REACT_APP_INSTAGRAM_LONG_LIVED_ACCESS_TOKEN;
 
 app.use(express.json());
@@ -76,10 +78,9 @@ app.get('/api', (req, res) => {
 // get short-lived access token
 app.post('/api/instagram/token', async (req, res) => {
     try {
-
-        const client_id = req.body.client_id ;
-        const client_secret = req.body.client_secret;
-        const redirect_uri = req.body.redirect_uri;
+        const client_id = process.env.REACT_APP_INSTAGRAM_CLIENT_ID;
+        const client_secret = process.env.REACT_APP_INSTAGRAM_APP_SECRET;
+        const redirect_uri = process.env.REACT_APP_INSTAGRAM_REDIRECT_URI;
         const code = req.body.code;
 
         console.log('Extracted parameters:', { client_id, client_secret, redirect_uri, code });
@@ -148,8 +149,9 @@ app.post('/api/instagram/token', async (req, res) => {
 })
 
 // get long-lived access token
-app.get('/api/instagram/token', async (req, res) => {
-    const client_secret = req.body.client_secret;
+app.get('/api/instagram/longLivedToken', async (req, res) => {
+    const client_secret = process.env.REACT_APP_INSTAGRAM_APP_SECRET;
+    // const client_secret = req.body.client_secret;
     const shortLivedToken = req.session.instagramToken ? req.session.instagramToken.shortLivedToken : null;
     
     if (!shortLivedToken) {

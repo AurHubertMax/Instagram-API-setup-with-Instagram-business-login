@@ -1,6 +1,6 @@
 import axios from "axios";
 
-export const generateInstagramAccessToken = async (url, clientId, clientSecret, redirectUri) => {
+export const generateShortLivedAccessToken = async (url) => {
     console.log("URL to generate access token:", url);
     try {
         const cleanUrl = url.split('#')[0];
@@ -21,9 +21,9 @@ export const generateInstagramAccessToken = async (url, clientId, clientSecret, 
         console.log("Extracted code:", code);
 
         const response = await axios.post('/api/instagram/token', {
-            client_id: clientId,
-            client_secret: clientSecret,
-            redirect_uri: redirectUri,
+            // client_id: clientId,
+            // client_secret: clientSecret,
+            // redirect_uri: redirectUri,
             code: code,
             grant_type: 'authorization_code'
         });
@@ -35,5 +35,20 @@ export const generateInstagramAccessToken = async (url, clientId, clientSecret, 
         console.error("Error generating Instagram access token:", error);
         throw error;
 
+    }
+}
+
+export const generateLongLivedAccessToken = async () => {
+    try {
+        const response = await axios.get('/api/instagram/longLivedToken', {
+            withCredentials: true,
+        });
+
+        console.log("Long-lived access token response:", response.data);
+
+        return response.data;
+    } catch (error) {
+        console.error("Error generating long-lived Instagram access token:", error);
+        throw error;
     }
 }
