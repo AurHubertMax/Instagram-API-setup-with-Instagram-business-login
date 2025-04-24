@@ -5,7 +5,7 @@ import CustomInstagramLogin from './components/customInstagramLogin';
 import { generateShortLivedAccessToken, generateLongLivedAccessToken } from './components/instagramAccessToken';
 import { useParams } from "react-router-dom";
 import axios from 'axios';
-import { checkInstagramConnection as checkConnection, logoutFromInstagram, postToInstagram } from './components/instagramUtilities';
+import { checkInstagramConnection as checkConnection, logoutFromInstagram, postToInstagram, uploadImageToServer, deleteImageFromServer } from './components/instagramUtilities';
 
 const clientId = process.env.REACT_APP_INSTAGRAM_CLIENT_ID;
 const clientSecret = process.env.REACT_APP_INSTAGRAM_APP_SECRET;
@@ -93,12 +93,21 @@ function App() {
   }
 
   const handlePostToInstagram = async (caption, file) => {
-    const response = await postToInstagram(caption, file);
+
+    const response = await uploadImageToServer(file);
+
     if (response) {
-      toast.success('Post created successfully!');
+      toast.success('Image uploaded successfully!');
     } else {
-      toast.error('Error creating post');
+      toast.error('Error uploading image');
     }
+    
+    // const response = await postToInstagram(caption, file);
+    // if (response) {
+    //   toast.success('Post created successfully!');
+    // } else {
+    //   toast.error('Error creating post');
+    // }
     setCaption('');
     setFile(null);
 

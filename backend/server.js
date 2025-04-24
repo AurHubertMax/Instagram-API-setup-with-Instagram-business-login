@@ -1,3 +1,9 @@
+if (!String.prototype.replaceAll) {
+    String.prototype.replaceAll = function(search, replacement) {
+      return this.split(search).join(replacement);
+    };
+  }
+
 const FormData = require('form-data');
 const express = require('express');
 const session = require('express-session');
@@ -48,8 +54,9 @@ app.use(session({
 
 app.use((req, res, next) => {
     res.header("Access-Control-Allow-Origin", "http://localhost:3000");
-    res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    res.header("Access-Control-Allow-Credentials", "true");
     next();
 })
 
@@ -368,11 +375,61 @@ app.get('/api/instagram/token-status', (req, res) => {
 ** These endpoints are used to post media to Instagram.
 ---------------------------------------------------------------------------------------*/
 
+// UPLOAD A MEDIA FILE
+app.post('/api/instagram/uploadImage', upload.single('image'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'Missing image file' });
+        }
+
+        // generate url for uploaded image
+        const serverURL = `${req.protocol}://${req.get('host')}`;
+        const imageURL = `${serverURL}/uploads/${req.file.filename}`;
+
+        console.log('Uploaded image URL:', imageURL);
+
+        return res.json({ 
+            image_url: imageURL,
+            id: req.file.filename,
+        });
+
+    } catch (e) {
+        console.error('Error uploading image:', e.message);
+        return res.status(500).json({ error: e.message });
+    }
+})
+
+// DELETE A MEDIA FILE
+app.post('/api/instagram/removeImage', async (req, res) => {
+    try {
+        const { id } = req.body;
+
+        if (!id) {
+            return res.status(400).json({ error: 'Missing image id' });
+        }
+
+        const filePath = path.join(uploadDir, id);
+        if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+
+            return res.json({ message: 'Image removed successfully' });
+
+        } else {
+
+            return res.status(404).json({ error: 'Image not found' });
+
+        }
+    } catch (e) {
+        console.error('Error removing image:', e.message);
+        return res.status(500).json({ error: e.message });
+    }
+});
+
 // CREATE A CONTAINER FOR THE MEDIA
-app.post('/api/instagram/createContainer', upload.single('image'), async (req, res) => {
+app.post('/api/instagram/createContainer', async (req, res) => {
     try {
         console.log('Received request to create Instagram container');
-        console.log('File:', req.file); 
+        console.log('image url:', req.imageURL); 
         console.log('Body:', req.body); 
 
         const access_token = req.session.instagramToken ? req.session.instagramToken.longLivedToken : longLivedToken;
@@ -382,22 +439,13 @@ app.post('/api/instagram/createContainer', upload.single('image'), async (req, r
         }
 
         // check validity of request body
-        if (!req.file) {
+        if (!req.imageURL) {
             return res.status(400).json({ error: 'Missing image file' });
         }
         
         if (!req.body.caption) {
             return res.status(400).json({ error: 'Missing caption parameter' });
         }
-
-        const serverUrl = `${req.protocol}://${req.get('host')}`;
-        const image_url = `${serverUrl}/uploads/${req.file.filename}`;
-        const caption = req.body.caption;
-        
-        console.log('Image URL:', image_url);
-        console.log('Caption:', caption);
-
-        return res.json({ image_url, caption });
 
         let userId = req.body.user_id;
         if (!userId) {
@@ -410,11 +458,10 @@ app.post('/api/instagram/createContainer', upload.single('image'), async (req, r
         const params = {
             caption, 
             access_token,
-            is_carousel_item: is_carousel,
         };
 
-        if (image_url) {
-            params.image_url = image_url;
+        if (imageURL) {
+            params.image_url = imageURL;
         } else if (video_url) {
             params.video_url = video_url;
         }

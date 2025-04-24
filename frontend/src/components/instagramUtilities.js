@@ -66,29 +66,72 @@ export const fetchInstagramProfile = async () => {
 //     })
 // }
 
-export const postToInstagram = async (caption, file) => {
+export const uploadImageToServer = async (file) => {
+    try {
+        const validImageTypes = ['image/jpeg', 'image/jpg'];
+
+        if (!file) {
+            console.error('No file provided. Please select an image to upload.');
+            return null;
+        }
+
+        if (!validImageTypes.includes(file.type)) {
+            console.error('Invalid file type. Only JPEG images are allowed.');
+            return null;
+        }
+
+        const formData = new FormData();
+        formData.append('image', file);
+
+        const response = await axios.post('/api/instagram/uploadImage', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+            withCredentials: true
+        });
+
+        console.log('Image upload response:', response.data);
+        return response.data;
+        
+    } catch (error) {
+        console.error('Error uploading image to server:', error);
+        return null;
+    }
+}
+
+export const deleteImageFromServer = async (imageId) => {
+    try {
+        const response = await axios.post('/api/instagram/removeImage', {
+            imageId: imageId
+        }, {
+            withCredentials: true
+        });
+
+        console.log('Image delete response:', response.data);
+        return response.data;
+
+    } catch (error) {
+        console.error('Error deleting image from server:', error);
+        return null;
+    }
+}
+
+export const postToInstagram = async (caption, imageURL) => {
     // Check if the file is a valid image type
     const validImageTypes = ['image/jpeg', 'image/jpg'];
 
-    if (!file) {
+    if (!imageURL) {
         console.error('No file provided. Please select an image to upload.');
         return null;
     }
 
-    if (!validImageTypes.includes(file.type)) {
-        console.error('Invalid file type. Only JPEG images are allowed.');
-        return null;
-    }
-
-    // Convert jpeg to image url
-    // const imageUrl = URL.createObjectURL(file);
-    // console.log('Image URL:', imageUrl);
-
-    // const imageURL = await convertImageToURL(file); // For testing with base64 image uploads
-    // console.log('Converted Image URL:', imageURL);
+    // if (!validImageTypes.includes(imageURL.type)) {
+    //     console.error('Invalid file type. Only JPEG images are allowed.');
+    //     return null;
+    // }
 
     const formData = new FormData();
-    formData.append('image', file); 
+    formData.append('image_url', imageURL); 
     formData.append('caption', caption); 
 
     try {
