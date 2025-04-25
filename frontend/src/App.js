@@ -25,6 +25,7 @@ function App() {
     hasShortLivedToken: null,
     shortLivedTokenExpiresAt: null,
   });
+  const [imageUrl, setImageUrl] = useState('');
 
   const fileInputRef = useRef(null);
 
@@ -92,22 +93,22 @@ function App() {
     }
   }
 
-  const handlePostToInstagram = async (caption, file) => {
+  const handlePostToInstagram = async (caption, imageURL) => {
 
-    const response = await uploadImageToServer(file);
+    // const response = await uploadImageToServer(file);
 
-    if (response) {
-      toast.success('Image uploaded successfully!');
-    } else {
-      toast.error('Error uploading image');
-    }
-    
-    // const response = await postToInstagram(caption, file);
     // if (response) {
-    //   toast.success('Post created successfully!');
+    //   toast.success('Image uploaded successfully!');
     // } else {
-    //   toast.error('Error creating post');
+    //   toast.error('Error uploading image');
     // }
+    
+    const response = await postToInstagram(caption, imageURL);
+    if (response && response.success) {
+      toast.success('Post created successfully!');
+    } else {
+      toast.error('Error creating post');
+    }
     setCaption('');
     setFile(null);
 
@@ -147,23 +148,29 @@ function App() {
               <div className="post-container">
                 <textarea 
                   placeholder='Write your caption here'
-                  className='post-textarea'
+                  className='caption-textarea'
                   value={caption}
                   onChange={(e) => setCaption(e.target.value)}
                 />
-                <input 
+                {/* <input 
                   type="file" 
                   accept="image/*" 
                   className='file-input'
                   ref={fileInputRef}
                   onChange={(e) => setFile(e.target.files[0])}
+                /> */}
+                <textarea
+                  placeholder='Provide image URL here'
+                  className='image-url-textarea'
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
                 />
                 <button 
                   className='post-button'
                   onClick={() => {
                     console.log('Caption:', caption);
-                    console.log('File:', file);
-                    handlePostToInstagram(caption, file);
+                    console.log('File:', imageUrl);
+                    handlePostToInstagram(caption, imageUrl);
                   }}
                 >
                   Post

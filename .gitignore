@@ -37,3 +37,4 @@
 
 # Testing
 **/coverage/
+**/nodemon.json

@@ -8,8 +8,8 @@ const FormData = require('form-data');
 const express = require('express');
 const session = require('express-session');
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
+// const path = require('path');
+// const fs = require('fs');
 const axios = require('axios');
 const app = express();
 const port = 5000;
@@ -21,26 +21,26 @@ const longLivedToken = process.env.REACT_APP_INSTAGRAM_LONG_LIVED_ACCESS_TOKEN;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Create uploads directory if it doesn't exist
-const uploadDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-}
+// // Create uploads directory if it doesn't exist
+// const uploadDir = path.join(__dirname, 'uploads');
+// if (!fs.existsSync(uploadDir)) {
+//     fs.mkdirSync(uploadDir, { recursive: true });
+// }
 
-// Configure storage for uploaded files
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, 'uploads/');
-    },
-    filename: (req, file, cb) => {
-        cb(null, Date.now() + path.extname(file.originalname));
-    }
-});
+// // Configure storage for uploaded files
+// const storage = multer.diskStorage({
+//     destination: (req, file, cb) => {
+//         cb(null, 'uploads/');
+//     },
+//     filename: (req, file, cb) => {
+//         cb(null, Date.now() + path.extname(file.originalname));
+//     }
+// });
 
-// Create the multer instance
-const upload = multer({ storage: storage });
+// // Create the multer instance
+// const upload = multer({ storage: storage });
 
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use(session({
     secret: 'secret',
@@ -375,62 +375,66 @@ app.get('/api/instagram/token-status', (req, res) => {
 ** These endpoints are used to post media to Instagram.
 ---------------------------------------------------------------------------------------*/
 
-// UPLOAD A MEDIA FILE
-app.post('/api/instagram/uploadImage', upload.single('image'), async (req, res) => {
-    try {
-        if (!req.file) {
-            return res.status(400).json({ error: 'Missing image file' });
-        }
+// // UPLOAD A MEDIA FILE
+// app.post('/api/instagram/uploadImage', upload.single('image'), async (req, res) => {
+//     try {
+//         if (!req.file) {
+//             return res.status(400).json({ error: 'Missing image file' });
+//         }
 
-        // generate url for uploaded image
-        const serverURL = `${req.protocol}://${req.get('host')}`;
-        const imageURL = `${serverURL}/uploads/${req.file.filename}`;
+//         // generate url for uploaded image
+//         const serverURL = `${req.protocol}://${req.get('host')}`;
+//         const imageURL = `${serverURL}/uploads/${req.file.filename}`;
 
-        console.log('Uploaded image URL:', imageURL);
+//         console.log('Uploaded image URL:', imageURL);
 
-        return res.json({ 
-            image_url: imageURL,
-            id: req.file.filename,
-        });
+//         return res.json({ 
+//             image_url: imageURL,
+//             id: req.file.filename,
+//         });
 
-    } catch (e) {
-        console.error('Error uploading image:', e.message);
-        return res.status(500).json({ error: e.message });
-    }
-})
+//     } catch (e) {
+//         console.error('Error uploading image:', e.message);
+//         return res.status(500).json({ error: e.message });
+//     }
+// })
 
-// DELETE A MEDIA FILE
-app.post('/api/instagram/removeImage', async (req, res) => {
-    try {
-        const { id } = req.body;
+// // DELETE A MEDIA FILE
+// app.post('/api/instagram/removeImage', async (req, res) => {
+//     try {
+//         const { id } = req.body;
 
-        if (!id) {
-            return res.status(400).json({ error: 'Missing image id' });
-        }
+//         if (!id) {
+//             return res.status(400).json({ error: 'Missing image id' });
+//         }
 
-        const filePath = path.join(uploadDir, id);
-        if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
+//         const filePath = path.join(uploadDir, id);
+//         if (fs.existsSync(filePath)) {
+//             fs.unlinkSync(filePath);
 
-            return res.json({ message: 'Image removed successfully' });
+//             return res.json({ message: 'Image removed successfully' });
 
-        } else {
+//         } else {
 
-            return res.status(404).json({ error: 'Image not found' });
+//             return res.status(404).json({ error: 'Image not found' });
 
-        }
-    } catch (e) {
-        console.error('Error removing image:', e.message);
-        return res.status(500).json({ error: e.message });
-    }
-});
+//         }
+//     } catch (e) {
+//         console.error('Error removing image:', e.message);
+//         return res.status(500).json({ error: e.message });
+//     }
+// });
 
 // CREATE A CONTAINER FOR THE MEDIA
 app.post('/api/instagram/createContainer', async (req, res) => {
     try {
+        // const { image_url, caption } = req.body;
         console.log('Received request to create Instagram container');
-        console.log('image url:', req.imageURL); 
-        console.log('Body:', req.body); 
+        console.log('image_url:', req.body.image_url);
+        console.log('caption:', req.body.caption);
+
+        const image_url = req.body.image_url;
+        let caption = req.body.caption;
 
         const access_token = req.session.instagramToken ? req.session.instagramToken.longLivedToken : longLivedToken;
 
@@ -439,29 +443,30 @@ app.post('/api/instagram/createContainer', async (req, res) => {
         }
 
         // check validity of request body
-        if (!req.imageURL) {
+        if (!image_url) {
             return res.status(400).json({ error: 'Missing image file' });
         }
         
-        if (!req.body.caption) {
+        if (!caption) {
             return res.status(400).json({ error: 'Missing caption parameter' });
+        } else {
+            caption = caption.replaceAll(' ', '%20').replaceAll('\n', '%0A').replaceAll('\r', '%0D');
+            console.log('Encoded caption:', caption);
         }
 
-        let userId = req.body.user_id;
-        if (!userId) {
-            const userResponse = await axios.get('https://graph.instagram.com/me', {
-                params: { access_token }
-            });
-            userId = userResponse.data.id;
-        }
+        const userResponse = await axios.get('https://graph.instagram.com/me', {
+            params: { access_token }
+        });
+        const userId = userResponse.data.id;
+        console.log('User ID:', userId);
 
         const params = {
             caption, 
             access_token,
         };
 
-        if (imageURL) {
-            params.image_url = imageURL;
+        if (image_url) {
+            params.image_url = image_url;
         } else if (video_url) {
             params.video_url = video_url;
         }
@@ -478,6 +483,40 @@ app.post('/api/instagram/createContainer', async (req, res) => {
         console.error('Error creating Instagram container:', e.response?.data || e.message);
         return res.status(500).json({ error: e.message, details: e.response?.data });
     }
+});
+
+app.post('/api/instagram/publishContainer', async (req, res) => {
+    const containerId = req.body.container_id;
+    const access_token = req.session.instagramToken ? req.session.instagramToken.longLivedToken : longLivedToken;
+
+    if (!access_token) {
+        return res.status(400).json({ error: 'Missing long-lived access token' });
+    }
+
+    if (!containerId) {
+        return res.status(400).json({ error: 'Missing container_id parameter' });
+    }
+
+    const userResponse = await axios.get('https://graph.instagram.com/me', {
+        params: { access_token }
+    });
+    const userId = userResponse.data.id;
+
+    console.log('User ID:', userId);
+    console.log('Container ID:', containerId);
+
+    const params = {
+        access_token,
+        creation_id: containerId
+    };
+
+    const response = await axios.post(`https://graph.instagram.com/${userId}/media_publish`, 
+        null, 
+        { params }
+    );
+
+    console.log('Instagram publish container response:', response.data);
+    return res.json(response.data);
 });
 
 app.listen(port, () => {
