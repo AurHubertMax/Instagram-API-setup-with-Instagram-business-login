@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import './App.css';
 import { toast } from 'react-toastify';
 import CustomInstagramLogin from './components/customInstagramLogin';
+import CustomImgurLogin from './components/customImgurLogin';
 import { generateShortLivedAccessToken, generateLongLivedAccessToken } from './components/instagramAccessToken';
 import { useParams } from "react-router-dom";
 import axios from 'axios';
@@ -12,7 +13,14 @@ const clientSecret = process.env.REACT_APP_INSTAGRAM_APP_SECRET;
 const redirectUri = process.env.REACT_APP_INSTAGRAM_REDIRECT_URI;
 const scope = process.env.REACT_APP_INSTAGRAM_SCOPE;
 
+const imgurClientId = process.env.REACT_APP_IMGUR_CLIENT_ID;
+const imgurClientSecret = process.env.REACT_APP_IMGUR_CLIENT_SECRET;
+const imgurRedirectUri = process.env.REACT_APP_IMGUR_REDIRECT_URI;
+
+
 function App() {
+
+  // INSTAGRAM STATES
   const [urlButtonVisibility, setUrlButtonVisibility] = useState(false);
   const [caption, setCaption] = useState('');
   const [file, setFile] = useState(null);
@@ -32,8 +40,23 @@ function App() {
   // separate scope into a comma separated array of strings
   const scopes = scope ? scope.split(',').map(s => s.trim()) : ['user_profile'];
 
+  // IMGUR STATES
+  const [imgurStatus, setImgurStatus] = useState({
+    loggedIn: false,
+    userId: null,
+    hasLongLivedToken: null,
+    longLivedTokenExpiresAt: null,
+    hasShortLivedToken: null,
+    shortLivedTokenExpiresAt: null,
+  })
+
+
   const checkInstagramConnection = async () => {
     return await checkConnection(setInstagramStatus);
+  };
+
+  const checkImgurConnection = async () => {
+    return await checkConnection(setImgurStatus);
   };
 
   useEffect(() => {
@@ -209,6 +232,20 @@ function App() {
               className="instagram-button"
               setUrlButtonVisibility={setUrlButtonVisibility}
               onLoginSuccess={checkInstagramConnection}
+            />
+          </>
+        )}
+        {!imgurStatus.loggedIn && (
+          <>
+            <h1>Imgur Login</h1>
+            <CustomImgurLogin 
+              clientId={imgurClientId}
+              clientSecret={imgurClientSecret}
+              redirectUri={imgurRedirectUri}
+              buttonText="Connect Imgur Account"
+              className="imgur-button"
+              setUrlButtonVisibility={setUrlButtonVisibility}
+              onLoginSuccess={checkImgurConnection}
             />
           </>
         )}
