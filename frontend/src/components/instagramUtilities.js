@@ -49,57 +49,83 @@ export const fetchInstagramProfile = async () => {
     }
 }
 
-// export const uploadImageToServer = async (file) => {
-//     try {
-//         const validImageTypes = ['image/jpeg', 'image/jpg'];
+const convertToJPG = (file) => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
 
-//         if (!file) {
-//             console.error('No file provided. Please select an image to upload.');
-//             return null;
-//         }
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target.result;
 
-//         if (!validImageTypes.includes(file.type)) {
-//             console.error('Invalid file type. Only JPEG images are allowed.');
-//             return null;
-//         }
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
 
-//         const formData = new FormData();
-//         formData.append('image', file);
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
 
-//         const response = await axios.post('/api/instagram/uploadImage', formData, {
-//             headers: {
-//                 'Content-Type': 'multipart/form-data',
-//             },
-//             withCredentials: true
-//         });
+                canvas.toBlob((blob) => {
+                    if (!blob) {
+                        reject(new Error('Failed to convert image to JPG'));
+                        return;
+                    }
 
-//         console.log('Image upload response:', response.data);
-//         return response.data;
-        
-//     } catch (error) {
-//         console.error('Error uploading image to server:', error);
-//         return null;
-//     }
-// }
+                    const fileName = file.name.replace(/\.[^/.]+$/, '') + '.jpg';
 
-// export const deleteImageFromServer = async (imageId) => {
-//     try {
-//         const response = await axios.post('/api/instagram/removeImage', {
-//             imageId: imageId
-//         }, {
-//             withCredentials: true
-//         });
+                    const convertedFile = new File(
+                        [blob],
+                        fileName,
+                        { type: 'image/jpeg' }
+                    );
 
-//         console.log('Image delete response:', response.data);
-//         return response.data;
+                    resolve(convertedFile);
+                }, 'image/jpeg');
+            };
 
-//     } catch (error) {
-//         console.error('Error deleting image from server:', error);
-//         return null;
-//     }
-// }
+            img.onerror = (error) => {
+                reject(error);
+            }
+        }
 
-export const postToInstagram = async (caption, imageURL) => {
+        reader.onerror = (error) => {
+            reject(new Error('FileReader error: ' + error.message));
+        };
+    });
+};
+
+const uploadImageToImgur = async (file) => {
+
+    if (!file) {
+        console.error('No file provided. Please select an image to upload.');
+        return null;
+    }
+    
+    try {
+        const jpgFile = await convertToJPG(file);
+        console.log('Converted file:', jpgFile);
+
+        const formData = new FormData();
+        formData.append('image', jpgFile);
+
+        const response = await axios.post('/api/imgur/upload', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        });
+
+        console.log('Imgur upload response:', response);
+        return response;
+
+    } catch (error) {
+        console.error('Error uploading image to Imgur:', error);
+        return null;
+    }
+
+}
+
+export const postToInstagram = async (caption, file) => {
     // Check if the file is a valid image type
     
     if (!caption) {
@@ -107,22 +133,21 @@ export const postToInstagram = async (caption, imageURL) => {
         return null;
     }
 
-    if (!imageURL) {
+    if (!file) {
         console.error('No file provided. Please select an image to upload.');
         return null;
     }
 
-    const validImageTypes = ['.jpeg', '.jpg'];
-    const isValidExtension = validImageTypes.some(ext => imageURL.toLowerCase().endsWith(ext));
+    const imgurResponse = await uploadImageToImgur(file);
 
-    if (!isValidExtension) {
-        console.error('Invalid file type. Only JPEG images are allowed.');
+    if (!imgurResponse) {
+        console.error('Imgur upload failed. Cannot proceed with Instagram post.');
         return null;
     }
 
-    // const formData = new FormData();
-    // formData.append('image_url', imageURL); 
-    // formData.append('caption', caption); 
+    console.log('imgurResponse:', imgurResponse);
+    const imageURL = imgurResponse.data.image_url;
+
 
     try {
         const containerID = await axios.post('/api/instagram/createContainer', {

@@ -2,21 +2,15 @@ import { useState, useEffect, useRef } from 'react';
 import './App.css';
 import { toast } from 'react-toastify';
 import CustomInstagramLogin from './components/customInstagramLogin';
-import CustomImgurLogin from './components/customImgurLogin';
 import { generateShortLivedAccessToken, generateLongLivedAccessToken } from './components/instagramAccessToken';
 import { useParams } from "react-router-dom";
 import axios from 'axios';
-import { checkInstagramConnection as checkConnection, logoutFromInstagram, postToInstagram, uploadImageToServer, deleteImageFromServer } from './components/instagramUtilities';
+import { checkInstagramConnection as checkConnection, logoutFromInstagram, postToInstagram, uploadImageToImgur } from './components/instagramUtilities';
 
 const clientId = process.env.REACT_APP_INSTAGRAM_CLIENT_ID;
 const clientSecret = process.env.REACT_APP_INSTAGRAM_APP_SECRET;
 const redirectUri = process.env.REACT_APP_INSTAGRAM_REDIRECT_URI;
 const scope = process.env.REACT_APP_INSTAGRAM_SCOPE;
-
-const imgurClientId = process.env.REACT_APP_IMGUR_CLIENT_ID;
-const imgurClientSecret = process.env.REACT_APP_IMGUR_CLIENT_SECRET;
-const imgurRedirectUri = process.env.REACT_APP_IMGUR_REDIRECT_URI;
-
 
 function App() {
 
@@ -25,6 +19,7 @@ function App() {
   const [caption, setCaption] = useState('');
   const [file, setFile] = useState(null);
   const [urlValue, setUrlValue] = useState('');
+  const [loadingPostToImgur, setLoadingPostToImgur] = useState(false);
   const [instagramStatus, setInstagramStatus] = useState({
     loggedIn: false,
     userId: null,
@@ -40,23 +35,9 @@ function App() {
   // separate scope into a comma separated array of strings
   const scopes = scope ? scope.split(',').map(s => s.trim()) : ['user_profile'];
 
-  // IMGUR STATES
-  const [imgurStatus, setImgurStatus] = useState({
-    loggedIn: false,
-    userId: null,
-    hasLongLivedToken: null,
-    longLivedTokenExpiresAt: null,
-    hasShortLivedToken: null,
-    shortLivedTokenExpiresAt: null,
-  })
-
 
   const checkInstagramConnection = async () => {
     return await checkConnection(setInstagramStatus);
-  };
-
-  const checkImgurConnection = async () => {
-    return await checkConnection(setImgurStatus);
   };
 
   useEffect(() => {
@@ -116,17 +97,8 @@ function App() {
     }
   }
 
-  const handlePostToInstagram = async (caption, imageURL) => {
-
-    // const response = await uploadImageToServer(file);
-
-    // if (response) {
-    //   toast.success('Image uploaded successfully!');
-    // } else {
-    //   toast.error('Error uploading image');
-    // }
-    
-    const response = await postToInstagram(caption, imageURL);
+  const handlePostToInstagram = async (caption, file) => {
+    const response = await postToInstagram(caption, file);
     if (response && response.success) {
       toast.success('Post created successfully!');
     } else {
@@ -146,6 +118,15 @@ function App() {
         {/* Instagram Connection Status */}
         <div className="instagram-connection-status-container">
           <h2>Instagram Connection Status</h2>
+
+          {/* <h3>Upload image to Imgur</h3>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => setFile(e.target.files[0])}
+            ref={fileInputRef}
+          />
+          <button onClick={() => uploadImageToImgur(file)}>Upload</button> */}
           
           {instagramStatus.loggedIn ? (
             <div className="connected-account-container">
@@ -175,25 +156,25 @@ function App() {
                   value={caption}
                   onChange={(e) => setCaption(e.target.value)}
                 />
-                {/* <input 
+                <input 
                   type="file" 
                   accept="image/*" 
                   className='file-input'
                   ref={fileInputRef}
                   onChange={(e) => setFile(e.target.files[0])}
-                /> */}
-                <textarea
+                />
+                {/* <textarea
                   placeholder='Provide image URL here'
                   className='image-url-textarea'
                   value={imageUrl}
                   onChange={(e) => setImageUrl(e.target.value)}
-                />
+                /> */}
                 <button 
                   className='post-button'
                   onClick={() => {
                     console.log('Caption:', caption);
-                    console.log('File:', imageUrl);
-                    handlePostToInstagram(caption, imageUrl);
+                    console.log('File:', file);
+                    handlePostToInstagram(caption, file);
                   }}
                 >
                   Post
@@ -235,7 +216,7 @@ function App() {
             />
           </>
         )}
-        {!imgurStatus.loggedIn && (
+        {/* {!imgurStatus.loggedIn && (
           <>
             <h1>Imgur Login</h1>
             <CustomImgurLogin 
@@ -248,7 +229,7 @@ function App() {
               onLoginSuccess={checkImgurConnection}
             />
           </>
-        )}
+        )} */}
   
         {/* Only show URL input when needed AND not logged in */}
         {urlButtonVisibility && !instagramStatus.loggedIn && ( 

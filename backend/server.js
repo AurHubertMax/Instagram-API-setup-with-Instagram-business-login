@@ -18,29 +18,21 @@ require('dotenv').config();
 
 const longLivedToken = process.env.REACT_APP_INSTAGRAM_LONG_LIVED_ACCESS_TOKEN;
 
+const imgurClientId = process.env.REACT_APP_IMGUR_CLIENT_ID;
+const imgurClientSecret = process.env.REACT_APP_IMGUR_CLIENT_SECRET;
+const imgurRefreshToken = process.env.REACT_APP_IMGUR_REFRESH_TOKEN;
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// // Create uploads directory if it doesn't exist
-// const uploadDir = path.join(__dirname, 'uploads');
-// if (!fs.existsSync(uploadDir)) {
-//     fs.mkdirSync(uploadDir, { recursive: true });
-// }
-
-// // Configure storage for uploaded files
-// const storage = multer.diskStorage({
-//     destination: (req, file, cb) => {
-//         cb(null, 'uploads/');
-//     },
-//     filename: (req, file, cb) => {
-//         cb(null, Date.now() + path.extname(file.originalname));
+// const upload = multer({ 
+//     storage: multer.memoryStorage(),
+//     limits: {
+//       fileSize: 10 * 1024 * 1024, // 10MB limit
 //     }
-// });
+//   });
 
-// // Create the multer instance
-// const upload = multer({ storage: storage });
-
-// app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+const upload = multer();
 
 app.use(session({
     secret: 'secret',
@@ -374,56 +366,80 @@ app.get('/api/instagram/token-status', (req, res) => {
 ** INSTAGRAM POSTING ENDPOINTS
 ** These endpoints are used to post media to Instagram.
 ---------------------------------------------------------------------------------------*/
+// GET IMGUR ACCESS TOKEN
+const getImgurAccessToken = async () => {
+    try {
+        const client_id = imgurClientId;
+        const client_secret = imgurClientSecret;
+        const refresh_token = imgurRefreshToken;
 
-// // UPLOAD A MEDIA FILE
-// app.post('/api/instagram/uploadImage', upload.single('image'), async (req, res) => {
-//     try {
-//         if (!req.file) {
-//             return res.status(400).json({ error: 'Missing image file' });
-//         }
+        if (!client_id || !client_secret || !refresh_token) {
+            throw new Error('Missing client_id, client_secret or refresh_token');
+        }
 
-//         // generate url for uploaded image
-//         const serverURL = `${req.protocol}://${req.get('host')}`;
-//         const imageURL = `${serverURL}/uploads/${req.file.filename}`;
+        const formData = new FormData();
+        formData.append('client_id', client_id);
+        formData.append('client_secret', client_secret);
+        formData.append('grant_type', 'refresh_token');
+        formData.append('refresh_token', refresh_token);
 
-//         console.log('Uploaded image URL:', imageURL);
+        const response = await axios.post('https://api.imgur.com/oauth2/token', formData, {
+            headers: {
+                'content-type': 'multipart/form-data'
+            }
+        });
 
-//         return res.json({ 
-//             image_url: imageURL,
-//             id: req.file.filename,
-//         });
+        console.log('Imgur token response:', response.data);
+        return response.data.access_token;
 
-//     } catch (e) {
-//         console.error('Error uploading image:', e.message);
-//         return res.status(500).json({ error: e.message });
-//     }
-// })
+    } catch (e) {
+        console.error('Error getting Imgur token:', e.response?.data || e.message);
+        throw e;
+    }
+}
 
-// // DELETE A MEDIA FILE
-// app.post('/api/instagram/removeImage', async (req, res) => {
-//     try {
-//         const { id } = req.body;
+// UPLOAD MEDIA FILE TO IMGUR
+app.post('/api/imgur/upload', upload.single('image'), async (req, res) => {
+    try {
 
-//         if (!id) {
-//             return res.status(400).json({ error: 'Missing image id' });
-//         }
+        const file = req.file;
 
-//         const filePath = path.join(uploadDir, id);
-//         if (fs.existsSync(filePath)) {
-//             fs.unlinkSync(filePath);
+        if (!file) {
+            return res.status(400).json({ error: 'Missing image file' });
+        }
 
-//             return res.json({ message: 'Image removed successfully' });
+        const imgur_access_token = await getImgurAccessToken();
 
-//         } else {
+        if (!imgur_access_token) {
+            return res.status(400).json({ error: 'Missing access token' });
+        }
 
-//             return res.status(404).json({ error: 'Image not found' });
+        console.log('Imgur access token:', imgur_access_token);
+        console.log('Received image file:', file.originalname);
+        console.log('image file type:', file.mimetype);
 
-//         }
-//     } catch (e) {
-//         console.error('Error removing image:', e.message);
-//         return res.status(500).json({ error: e.message });
-//     }
-// });
+        const formData = new FormData();
+        formData.append('image', file.buffer, file.originalname);
+        formData.append('type', 'file');
+
+        const response = await axios.post('https://api.imgur.com/3/image', formData, {
+            headers: {
+                Authorization: `Bearer ${imgur_access_token}`,
+                'Content-Type': 'multipart/form-data',
+            }
+        });
+
+        console.log('Imgur upload response:', response.data);
+        return res.json({
+            image_url: response.data.data.link,
+            delete_hash: response.data.data.deletehash,
+        });
+
+    } catch (e) {
+        console.error('Error uploading image:', e.message);
+        return res.status(500).json({ error: e.message });
+    }
+})
 
 // CREATE A CONTAINER FOR THE MEDIA
 app.post('/api/instagram/createContainer', async (req, res) => {
