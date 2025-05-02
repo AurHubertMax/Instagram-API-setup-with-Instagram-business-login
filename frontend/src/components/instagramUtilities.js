@@ -125,6 +125,23 @@ const uploadImageToImgur = async (file) => {
 
 }
 
+const deleteImageFromImgur = async (imageHash) => {
+    if (!imageHash) {
+        console.error('No image hash provided. Please provide a valid image hash to delete.');
+        return null;
+    }
+
+    try {
+        const response = await axios.delete(`/api/imgur/delete/${imageHash}`);
+
+        console.log('Imgur delete response:', response.data);
+        return response.data;
+    } catch (e) {
+        console.error('Error deleting image from Imgur:', e);
+        return null;
+    }
+}
+
 export const postToInstagram = async (caption, file) => {
     // Check if the file is a valid image type
     
@@ -140,13 +157,9 @@ export const postToInstagram = async (caption, file) => {
 
     const imgurResponse = await uploadImageToImgur(file);
 
-    if (!imgurResponse) {
-        console.error('Imgur upload failed. Cannot proceed with Instagram post.');
-        return null;
-    }
-
     console.log('imgurResponse:', imgurResponse);
     const imageURL = imgurResponse.data.image_url;
+    const deleteHash = imgurResponse.data.delete_hash;
 
 
     try {
@@ -163,10 +176,17 @@ export const postToInstagram = async (caption, file) => {
         }, {
             withCredentials: true
         });
-        
+
+        const imgurDeleteResponse = await deleteImageFromImgur(deleteHash);
+        console.log('Imgur delete response:', imgurDeleteResponse);
+
+        if (imgurDeleteResponse.success && imgurDeleteResponse.success) {
+            console.log('Image deleted successfully from Imgur.');
+            
+        }
         return response.data;
     } catch (error) {
         console.error('Error posting to Instagram:', error);
         return null;
-    }
+    } 
 }

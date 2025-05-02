@@ -441,6 +441,34 @@ app.post('/api/imgur/upload', upload.single('image'), async (req, res) => {
     }
 })
 
+// DETELE IMAGE FROM IMGUR
+app.delete('/api/imgur/delete/:delete_hash', async (req, res) => {
+    try {
+        const delete_hash = req.params.delete_hash;
+        const imgur_access_token = await getImgurAccessToken();
+
+        if (!delete_hash) {
+            return res.status(400).json({ error: 'Missing delete_hash parameter' });
+        }
+
+        if (!imgur_access_token) {
+            return res.status(400).json({ error: 'Missing access token' });
+        }
+
+        const response = await axios.delete(`https://api.imgur.com/3/image/${delete_hash}`, {
+            headers: {
+                Authorization: `Bearer ${imgur_access_token}`
+            }
+        });
+
+        console.log('Imgur delete response:', response.data);
+        return res.json({ success: true });
+    } catch (e) {
+        console.error('Error deleting image:', e.message);
+        return res.status(500).json({ error: e.message });
+    }
+})
+
 // CREATE A CONTAINER FOR THE MEDIA
 app.post('/api/instagram/createContainer', async (req, res) => {
     try {
@@ -465,10 +493,7 @@ app.post('/api/instagram/createContainer', async (req, res) => {
         
         if (!caption) {
             return res.status(400).json({ error: 'Missing caption parameter' });
-        } else {
-            caption = caption.replaceAll(' ', '%20').replaceAll('\n', '%0A').replaceAll('\r', '%0D');
-            console.log('Encoded caption:', caption);
-        }
+        } 
 
         const userResponse = await axios.get('https://graph.instagram.com/me', {
             params: { access_token }
