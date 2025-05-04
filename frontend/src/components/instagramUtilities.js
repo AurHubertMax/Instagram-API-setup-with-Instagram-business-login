@@ -143,7 +143,6 @@ const deleteImageFromImgur = async (imageHash) => {
 }
 
 export const postToInstagram = async (caption, file) => {
-    // Check if the file is a valid image type
     
     if (!caption) {
         console.error('No caption provided. Please enter a caption for the post.');

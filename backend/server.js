@@ -8,8 +8,6 @@ const FormData = require('form-data');
 const express = require('express');
 const session = require('express-session');
 const multer = require('multer');
-// const path = require('path');
-// const fs = require('fs');
 const axios = require('axios');
 const app = express();
 const port = 5000;
@@ -25,13 +23,6 @@ const imgurRefreshToken = process.env.REACT_APP_IMGUR_REFRESH_TOKEN;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// const upload = multer({ 
-//     storage: multer.memoryStorage(),
-//     limits: {
-//       fileSize: 10 * 1024 * 1024, // 10MB limit
-//     }
-//   });
-
 const upload = multer();
 
 app.use(session({
@@ -39,7 +30,7 @@ app.use(session({
     resave: false,
     saveUninitialized: false,
     cookie: {
-        secure: process.env.NODE_ENV === 'production', // Set to true in production
+        secure: process.env.NODE_ENV === 'production',
         maxAge: 60 * 24 * 60 * 60 * 1000 // 60 days
     }
 }));

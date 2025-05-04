@@ -1,70 +1,63 @@
-# Getting Started with Create React App
+# **Instagram Business API Integration with Imgur Image Hosting**
+### This project demonstrates integration with Instagram's Business  API for posting content. It provides a simple interface to authenticate with Instagram, manage authentication token, using Imgur to host images to attain image urls, and post images to your instagram business profile
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+## Features
+- Instagram OAuth login and authentication
+- Token management (short-lived and long-lived tokens)
+- Session persistence for authenticated users
+- Image uploading and posting to Instagram
+- Automatic token refresh to maintain connection
 
-## Available Scripts
+## Tech Stack
+### Backend
+- NodeJs with Express
+- Session management with express-session
+- File uploads with Multer
+- HTTP requests with Axios
+- Environment variable management with Dotenv
 
-In the project directory, you can run:
+### Frontend
+- React 19
+- Axios for API interactions
+- React Toastify for notifications
+- Custom Instagram OAuth integration
 
-### `npm start`
+# Getting Started
+## Prerequisites
+- NodeJs(v12.*)
+- An Instagram Business account
+- A Facebook Developer account with an app configured for Instagram Graph API and connected to the Instagram Business account
+- An Imgur account and app
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## Installation
+1. Clone this repo
+2. Install dependencies for both frontend and backend
+3. Create `.env` files in both backend and frontend directories with your credentials
+Backend (.env):
+```
+REACT_APP_INSTAGRAM_CLIENT_ID=your_instagram_app_client_id
+REACT_APP_INSTAGRAM_APP_SECRET=your_instagram_app_secret
+REACT_APP_INSTAGRAM_REDIRECT_URI=your_instagram_redirect_uri
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+REACT_APP_IMGUR_CLIENT_ID=your_imgur_app_client_id
+REACT_APP_IMGUR_CLIENT_SECRET=your_imgur_app_secret
+REACT_APP_IMGUR_REFRESH_TOKEN=your_imgur_refresh_token
+REACT_APP_IMGUR_REDIRECT_URI=your_imgur_redirect_uri
+```
 
-### `npm test`
+Frontend (.env):
+```
+REACT_APP_INSTAGRAM_CLIENT_ID=your_instagram_app_client_id
+REACT_APP_INSTAGRAM_APP_SECRET=your_instagram_app_secret
+REACT_APP_INSTAGRAM_REDIRECT_URI=your_instagram_redirect_uri
+```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Running the Application
+1. start backend server with `npm run dev`
+2. start frontend server with `npm start`
 
-### `npm run build`
-
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+## Usage
+1. Connect your Instagram Business account using the "Connect Instagram Account" button
+2. After authentication, copy the redirect uri with the code to the textarea that appears and click "Generate Access Token"
+3. Upload images and add captions to post directly to your Instagram Business account
+4. Disconnect your account when finished
